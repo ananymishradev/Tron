@@ -174,24 +174,9 @@ Each particle occupies 6 consecutive slots. `getState()` reads positions and vel
 ## Running the Simulation
 
 ```bash
-g++ -std=c++11 main.cpp -o particle_simulation
-./particle_simulation
+g++ -std=c++17 main.cpp -o build/main.out
+./build/main.out
 ```
-
-The output is a time-series table showing particle positions at 0.2 s intervals:
-
-```
-Time(s) | P1 Pos (X, Y, Z)        | P2 Pos (X, Y, Z)
---------------------------------------------------------
-0.000s  | (0.000, 10.000, 0.000)  | (0.000, 5.000, 0.000)
-0.200s  | (0.000, 8.477, 0.000)   | (0.000, 6.133, 0.000)
-...
-2.000s  | (0.000, -9.224, 0.000)  | (0.000, -12.526, 0.000)
-```
-
-Two particles, initially at rest, fall under gravity while connected by a damped spring. You can watch them oscillate, stretch, compress, and eventually settle toward terminal velocity as drag and spring damping dissipate energy.
-
----
 
 ## What's Not Here (Yet)
 
