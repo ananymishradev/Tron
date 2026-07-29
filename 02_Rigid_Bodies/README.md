@@ -2,13 +2,12 @@
 
 > *"The rigid body is the simplest nontrivial dynamical system — six degrees of freedom, spinning and tumbling through space, governed by nothing but Newton and Euler."*
 
-This is a full 3D rigid body dynamics simulator based on David Baraff's SIGGRAPH course notes (`notesd1.pdf`). It simulates the unconstrained motion of multiple rigid bodies under gravity, external impulses, and ground collisions — all integrated with a choice of four numerical schemes.
+It simulates the unconstrained motion of multiple rigid bodies under gravity, external impulses, and ground collisions — all integrated with a choice of four numerical schemes.
 
 Each body has **13 state variables**: position $\mathbf{x}(t)$, orientation quaternion $\mathbf{q}(t)$, linear momentum $\mathbf{P}(t)$, and angular momentum $\mathbf{L}(t)$. The simulation evolves them through time, computing derived quantities like the rotation matrix $\mathbf{R}(t)$, the world-space inverse inertia tensor $\mathbf{I}^{-1}(t)$, linear velocity $\mathbf{v}(t)$, and angular velocity $\boldsymbol{\omega}(t)$ at every step.
 
 ---
 
-## The Physics
 
 Unlike point masses (which only translate), rigid bodies also **rotate**. A force applied anywhere other than the center of mass produces a torque, which changes the body's angular momentum. This coupling between translation and rotation is what makes rigid body dynamics interesting.
 
@@ -398,14 +397,4 @@ This simulation covers unconstrained rigid body motion — bodies flying and tum
 - **Parallelism**: Each body's dynamics are independent between collisions — ideal for SIMD or multi-threaded execution.
 - **Resting contact**: Bodies that come to rest on the ground currently micro-bounce. A proper resting contact algorithm would apply stabilizing forces to keep them still.
 
----
 
-## References
-
-1. **David Baraff**, *"Rigid Body Dynamics"*, SIGGRAPH 2001 Course Notes, Carnegie Mellon University. The theoretical foundation for everything in this simulation — quaternion kinematics, inertia tensor transformation, state-space formulation.
-
-2. **Andrew Witkin and David Baraff**, *"Physically Based Modeling: Principles and Practice"*, SIGGRAPH 1997 Course Notes. The earlier exposition of the same material, with additional detail on numerical integration.
-
-3. **David Eberly**, *"Game Physics"*, Morgan Kaufmann, 2nd Edition. A comprehensive reference covering rigid body dynamics, collision detection, and constraint solving.
-
-4. **John H. Mathews and Kurtis K. Fink**, *"Numerical Methods Using MATLAB"*, Prentice Hall. For the Runge-Kutta theory and stability analysis.
