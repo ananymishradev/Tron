@@ -22,6 +22,7 @@ struct GroundPlane {
 };
 
 inline void handleGroundCollision(RigidBody& rb, const GroundPlane& ground) {
+    // The floor is immovable, so only the body's inverse mass enters the impulse.
     if (rb.x.y < ground.y) {
         rb.x.y = ground.y + 1e-6;
 
@@ -156,16 +157,81 @@ namespace Table {
         return r;
     }
 
-    inline void printRow(const std::vector<std::string>& cells, const std::vector<int>& widths) {
-        std::cout << VBR;
-        for (size_t i = 0; i < cells.size(); ++i) {
-            int w = (i < widths.size()) ? widths[i] : 8;
-            const std::string& c = cells[i];
-            int pad = w - (int)c.length();
-            if (pad < 0) pad = 0;
-            std::cout << " " << c << std::string(pad, ' ') << " " << VBR;
+    inline int tableWidth(const std::vector<int>& widths) {
+        int sum = 0;
+        for (int w : widths) sum += w;
+        return sum + 3 * (int)widths.size() + 1;
+    }
+
+    inline void printVLine() { std::cout << VBR; }
+
+    inline void printTopBorder(const std::vector<int>& widths) {
+        std::cout << TL;
+        for (size_t i = 0; i < widths.size(); ++i) {
+            std::cout << repeat(HDR2, widths[i] + 2);
+            if (i < widths.size() - 1) std::cout << TEE; else std::cout << TR;
         }
         std::cout << "\n";
+    }
+
+    inline void printMidBorder(const std::vector<int>& widths) {
+        std::cout << LTE;
+        for (size_t i = 0; i < widths.size(); ++i) {
+            std::cout << repeat(HDR2, widths[i] + 2);
+            if (i < widths.size() - 1) std::cout << MID; else std::cout << RTE;
+        }
+        std::cout << "\n";
+    }
+
+    inline void printBotBorder(const std::vector<int>& widths) {
+        std::cout << BL;
+        for (size_t i = 0; i < widths.size(); ++i) {
+            std::cout << repeat(HDR2, widths[i] + 2);
+            if (i < widths.size() - 1) std::cout << BEE; else std::cout << BR;
+        }
+        std::cout << "\n";
+    }
+
+    inline void printHeaderRow(const std::vector<std::string>& headers, const std::vector<int>& widths) {
+        printVLine();
+        for (size_t i = 0; i < headers.size(); ++i) {
+            int pad = (widths[i] - (int)headers[i].length()) / 2;
+            int pad_r = widths[i] - pad - (int)headers[i].length();
+            std::cout << " " << std::string(pad, ' ') << headers[i]
+                      << std::string(pad_r, ' ') << " ";
+            printVLine();
+        }
+        std::cout << "\n";
+    }
+
+    inline void printDataRow(const std::vector<std::string>& cells, const std::vector<int>& widths) {
+        printVLine();
+        for (size_t i = 0; i < cells.size(); ++i) {
+            int w = (i < widths.size()) ? widths[i] : 8;
+            int pad = w - (int)cells[i].length();
+            if (pad < 0) pad = 0;
+            std::cout << " " << cells[i] << std::string(pad, ' ') << " ";
+            printVLine();
+        }
+        std::cout << "\n";
+    }
+
+    inline void printBoxTop(int innerWidth) {
+        std::cout << TL << repeat(HDR, innerWidth) << TR << "\n";
+    }
+
+    inline void printBoxMid(int innerWidth) {
+        std::cout << LTE << repeat(HDR2, innerWidth) << RTE << "\n";
+    }
+
+    inline void printBoxBot(int innerWidth) {
+        std::cout << BL << repeat(HDR2, innerWidth) << BR << "\n";
+    }
+
+    inline void printBoxLine(const std::string& content, int innerWidth) {
+        int pad = innerWidth - (int)content.length();
+        if (pad < 0) pad = 0;
+        std::cout << VBR << " " << content << std::string(pad, ' ') << " " << VBR << "\n";
     }
 
     inline std::string fmtVec(const Vec3& v, int w = 7, int prec = 2) {
@@ -211,9 +277,7 @@ struct SimulationEngine {
 
     void applyForces(RigidBody& body, int step) {
         body.resetAccumulators();
-
         body.applyForceAtCOM(Vec3(0, -cfg.gravity * body.mass, 0));
-
         if (cfg.enableRandomForces && step < 5) {
             std::uniform_real_distribution<double> dist_force(-15.0, 15.0);
             std::uniform_real_distribution<double> dist_off(-0.8, 0.8);
@@ -224,42 +288,52 @@ struct SimulationEngine {
         }
     }
 
+    std::vector<int> colWidths() const {
+        return {6, 8, 10, 28, 28, 28, 12};
+    }
+
+    int tableInnerWidth() const {
+        auto w = colWidths();
+        return Table::tableWidth(w) - 2;
+    }
+
     void run() {
         initialize();
 
-        int W = 90;
+        auto widths = colWidths();
+        int innerW = tableInnerWidth();
 
-        // Title
-        std::cout << Table::TL << Table::repeat(Table::HDR, W - 2) << Table::TR << "\n";
-        std::cout << Table::VBR << " " << std::left << std::setw(W - 4)
-                  << "UNCONSTRAINED RIGID BODY DYNAMICS — Enhanced Simulator (Baraff Model)"
-                  << " " << Table::VBR << "\n";
-        std::cout << Table::LTE << Table::repeat(Table::HDR2, W - 2) << Table::RTE << "\n";
-        std::cout << Table::VBR << " " << std::setw(W - 4) << std::left
-                  << "Integrator: " + integratorName(cfg.integrator)
-                  + " | dt = " + Table::fmtNum(cfg.dt, 4, 4) + " s"
-                  + " | Steps: " + std::to_string(cfg.totalSteps)
-                  + " | Bodies: " + std::to_string(cfg.numBodies)
-                  + " | Ground: " + (cfg.enableGround ? "ON" : "OFF")
-                  + " | Seed: " + std::to_string(cfg.seed)
-                  << " " << Table::VBR << "\n";
-        std::cout << Table::BL << Table::repeat(Table::HDR2, W - 2) << Table::BR << "\n\n";
+        // Title block
+        Table::printBoxTop(innerW);
+        Table::printBoxLine("UNCONSTRAINED RIGID BODY DYNAMICS -- Enhanced Simulator (Baraff Model)", innerW);
+        Table::printBoxMid(innerW);
+        {
+            std::ostringstream ss;
+            ss << "Integrator: " + integratorName(cfg.integrator)
+               + " | dt = " + Table::fmtNum(cfg.dt, 4, 4) + " s"
+               + " | Steps: " + std::to_string(cfg.totalSteps)
+               + " | Bodies: " + std::to_string(cfg.numBodies)
+               + " | Ground: " + (cfg.enableGround ? "ON" : "OFF")
+               + " | Seed: " + std::to_string(cfg.seed);
+            Table::printBoxLine(ss.str(), innerW);
+        }
+        Table::printBoxBot(innerW);
+        std::cout << "\n";
 
         // Initial conditions
-        {
-            std::cout << Table::TL << Table::repeat(Table::HDR, 88) << Table::TR << "\n";
-            std::cout << Table::VBR << " " << std::left << std::setw(86) << "INITIAL CONDITIONS" << " " << Table::VBR << "\n";
-            std::cout << Table::BL << Table::repeat(Table::HDR2, 88) << Table::BR << "\n\n";
+        Table::printBoxTop(innerW);
+        Table::printBoxLine("INITIAL CONDITIONS", innerW);
+        Table::printBoxBot(innerW);
+        std::cout << "\n";
 
-            for (const auto& body : bodies) {
-                std::cout << "  " << body.name << ":\n";
-                std::cout << "    Mass: " << std::fixed << std::setprecision(3) << body.mass << " kg\n";
-                std::cout << "    Position: " << body.x << "\n";
-                std::cout << "    Orientation (q): " << body.q << "\n";
-                std::cout << "    Linear Mom: " << body.P << " kg*m/s\n";
-                std::cout << "    Angular Mom: " << body.L << " kg*m^2/s\n";
-                std::cout << "    Kinetic Energy: " << std::fixed << std::setprecision(4) << body.computeKineticEnergy() << " J\n\n";
-            }
+        for (const auto& body : bodies) {
+            std::cout << "  " << body.name << ":\n";
+            std::cout << "    Mass: " << std::fixed << std::setprecision(3) << body.mass << " kg\n";
+            std::cout << "    Position: " << body.x << "\n";
+            std::cout << "    Orientation (q): " << body.q << "\n";
+            std::cout << "    Linear Mom: " << body.P << " kg*m/s\n";
+            std::cout << "    Angular Mom: " << body.L << " kg*m^2/s\n";
+            std::cout << "    Kinetic Energy: " << std::fixed << std::setprecision(4) << body.computeKineticEnergy() << " J\n\n";
         }
 
         // Column definitions
@@ -273,34 +347,21 @@ struct SimulationEngine {
             {"KE (J)", 12, [](const RigidBody& b) { return Table::fmtNum(b.computeKineticEnergy(), 8, 4); }},
         };
 
+        std::vector<std::string> headers;
+        for (auto& c : cols) headers.push_back(c.header);
+
         bool header_printed = false;
 
         for (int step = 0; step <= cfg.totalSteps; ++step) {
             double time = step * cfg.dt;
 
             if (!header_printed) {
-                std::cout << Table::TL;
-                for (size_t i = 0; i < cols.size(); ++i) {
-                    std::cout << Table::repeat(Table::HDR2, cols[i].width + 2);
-                    if (i < cols.size() - 1) std::cout << Table::TEE; else std::cout << Table::TR;
-                }
-                std::cout << "\n";
-                std::cout << Table::VBR;
-                for (auto& c : cols) {
-                    int pad = (c.width - (int)c.header.length()) / 2;
-                    std::cout << " " << std::string(pad, ' ') << c.header
-                              << std::string(c.width - pad - (int)c.header.length(), ' ') << " " << Table::VBR;
-                }
-                std::cout << "\n";
+                Table::printTopBorder(widths);
+                Table::printHeaderRow(headers, widths);
                 header_printed = true;
             }
 
-            std::cout << Table::LTE;
-            for (size_t i = 0; i < cols.size(); ++i) {
-                std::cout << Table::repeat(Table::HDR2, cols[i].width + 2);
-                if (i < cols.size() - 1) std::cout << Table::MID; else std::cout << Table::RTE;
-            }
-            std::cout << "\n";
+            Table::printMidBorder(widths);
 
             for (auto& body : bodies) {
                 log.record(step, time, body);
@@ -312,9 +373,7 @@ struct SimulationEngine {
                     else if (c.header == "Time (s)") cells.push_back(time_str);
                     else cells.push_back(c.extractor(body));
                 }
-                std::vector<int> col_widths;
-                for (auto& c : cols) col_widths.push_back(c.width);
-                Table::printRow(cells, col_widths);
+                Table::printDataRow(cells, widths);
             }
 
             for (auto& body : bodies) {
@@ -331,21 +390,16 @@ struct SimulationEngine {
             }
         }
 
-        std::cout << Table::BL;
-        for (size_t i = 0; i < cols.size(); ++i) {
-            std::cout << Table::repeat(Table::HDR2, cols[i].width + 2);
-            if (i < cols.size() - 1) std::cout << Table::BEE; else std::cout << Table::BR;
-        }
-        std::cout << "\n\n";
+        Table::printBotBorder(widths);
+        std::cout << "\n";
 
-        printSummary();
+        printSummary(innerW);
     }
 
-    void printSummary() {
-        int W = 90;
-        std::cout << Table::TL << Table::repeat(Table::HDR, W - 2) << Table::TR << "\n";
-        std::cout << Table::VBR << " " << std::left << std::setw(W - 4) << "SIMULATION SUMMARY" << " " << Table::VBR << "\n";
-        std::cout << Table::LTE << Table::repeat(Table::HDR2, W - 2) << Table::RTE << "\n";
+    void printSummary(int innerW) {
+        Table::printBoxTop(innerW);
+        Table::printBoxLine("SIMULATION SUMMARY", innerW);
+        Table::printBoxMid(innerW);
 
         for (auto& body : bodies) {
             auto first = std::find_if(log.snapshots.begin(), log.snapshots.end(),
@@ -367,33 +421,49 @@ struct SimulationEngine {
             double drift = (cfg.totalSteps > 0 && KE_i != 0)
                 ? ((KE_f - KE_i) / KE_i) * 100.0 / cfg.totalSteps : 0.0;
 
-            std::cout << Table::VBR << " " << body.name
-                      << std::string(W - 4 - body.name.length(), ' ') << " " << Table::VBR << "\n";
-            std::cout << Table::VBR << "   Initial KE: " << std::right << std::setw(10)
-                      << std::fixed << std::setprecision(4) << KE_i
-                      << " J   Final KE: " << std::setw(10) << KE_f
-                      << " J   " << (KE_d >= 0 ? "+" : "") << std::setw(10) << KE_d
-                      << " J  (" << std::setw(6) << std::setprecision(2) << KE_p << "%)"
-                      << std::string(4, ' ') << Table::VBR << "\n";
-            std::cout << Table::VBR << "   |v|: " << std::setw(8) << std::setprecision(4) << v_i
-                      << " -> " << std::setw(8) << v_f
-                      << "   |w|: " << std::setw(8) << w_i
-                      << " -> " << std::setw(8) << w_f
-                      << "   |P|: " << std::setw(8) << P_i
-                      << " -> " << std::setw(8) << P_f
-                      << std::string(4, ' ') << Table::VBR << "\n";
-            std::cout << Table::VBR << "   |L|: " << std::setw(8) << std::setprecision(4) << L_i
-                      << " -> " << std::setw(8) << L_f
-                      << std::string(47, ' ') << Table::VBR << "\n";
-            std::cout << Table::VBR << std::string(W - 4, ' ') << " " << Table::VBR << "\n";
-            std::cout << Table::VBR << "   Energy Drift Rate: "
-                      << std::setw(10) << std::setprecision(4) << drift
-                      << " %/step   (" << integratorName(cfg.integrator) << ")"
-                      << std::string(25, ' ') << Table::VBR << "\n";
-            std::cout << Table::LTE << Table::repeat(Table::HDR2, W - 2) << Table::RTE << "\n";
+            // Build each line as a string, pad to innerW
+            Table::printBoxLine(body.name, innerW);
+            {
+                std::ostringstream ss;
+                ss << std::fixed;
+                ss << "   Initial KE: " << std::setw(10) << std::setprecision(4) << KE_i
+                   << " J   Final KE: " << std::setw(10) << KE_f
+                   << " J   " << (KE_d >= 0 ? "+" : "") << std::setw(10) << KE_d
+                   << " J  (" << std::setw(6) << std::setprecision(2) << KE_p << "%)";
+                Table::printBoxLine(ss.str(), innerW);
+            }
+            {
+                std::ostringstream ss;
+                ss << std::fixed;
+                ss << "   |v|: " << std::setw(8) << std::setprecision(4) << v_i
+                   << " -> " << std::setw(8) << v_f
+                   << "   |w|: " << std::setw(8) << w_i
+                   << " -> " << std::setw(8) << w_f
+                   << "   |P|: " << std::setw(8) << P_i
+                   << " -> " << std::setw(8) << P_f;
+                Table::printBoxLine(ss.str(), innerW);
+            }
+            {
+                std::ostringstream ss;
+                ss << std::fixed;
+                ss << "   |L|: " << std::setw(8) << std::setprecision(4) << L_i
+                   << " -> " << std::setw(8) << L_f;
+                Table::printBoxLine(ss.str(), innerW);
+            }
+            Table::printBoxLine("", innerW);
+            {
+                std::ostringstream ss;
+                ss << std::fixed;
+                ss << "   Energy Drift Rate: "
+                   << std::setw(10) << std::setprecision(4) << drift
+                   << " %/step   (" << integratorName(cfg.integrator) << ")";
+                Table::printBoxLine(ss.str(), innerW);
+            }
+            Table::printBoxMid(innerW);
         }
 
-        std::cout << Table::BL << Table::repeat(Table::HDR2, W - 2) << Table::BR << "\n\n";
+        Table::printBoxBot(innerW);
+        std::cout << "\n";
     }
 };
 
