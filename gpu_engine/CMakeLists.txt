@@ -31,3 +31,4 @@ function(add_engine_test name source)
 endfunction()
 
 add_engine_test(test_smoke tests/test_smoke.cu)
+add_engine_test(test_math tests/test_math.cu)
