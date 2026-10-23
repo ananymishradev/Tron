@@ -14,6 +14,7 @@ find_package(OpenGL REQUIRED)
 
 set(ENGINE_SOURCES
   src/util/device_info.cu
+  src/sim/particles.cu
 )
 
 add_library(engine STATIC ${ENGINE_SOURCES})
@@ -32,3 +33,4 @@ endfunction()
 
 add_engine_test(test_smoke tests/test_smoke.cu)
 add_engine_test(test_math tests/test_math.cu)
+add_engine_test(test_particles tests/test_particles.cu)
