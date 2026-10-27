@@ -18,6 +18,7 @@ set(ENGINE_SOURCES
   src/sim/forces.cu
   src/sim/integrate.cu
   src/sim/stats.cu
+  src/sim/grid.cu
 )
 
 add_library(engine STATIC ${ENGINE_SOURCES})
@@ -38,5 +39,8 @@ add_engine_test(test_smoke tests/test_smoke.cu)
 add_engine_test(test_math tests/test_math.cu)
 add_engine_test(test_particles tests/test_particles.cu)
 add_engine_test(test_forces tests/test_forces.cu)
+add_engine_test(test_grid tests/test_grid.cu)
 add_executable(bench_linear bench/bench_linear.cu)
 target_link_libraries(bench_linear PRIVATE engine)
+add_executable(bench_grid bench/bench_grid.cu)
+target_link_libraries(bench_grid PRIVATE engine)
