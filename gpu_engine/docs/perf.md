@@ -7,3 +7,4 @@ Release builds, and include only the listed device stages.
 |---|---|---:|---:|
 | Forces + semi-implicit integration | 256 threads/block | 1,000,000 particles | 1.188 ms/step |
 | Uniform grid setup + counting sort | 256 threads/block, cell size 0.5 | 1,000,000 particles | 21.819 ms |
+| Particle collisions v1 | 256 threads/block, global reads | 100,000 particles | 4276.345 ms/step |
