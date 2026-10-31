@@ -167,9 +167,11 @@ void launch_grid_build(const float4* pos, int n, UniformGrid& grid,
   CUDA_CHECK(cudaGetLastError());
   count_cells_kernel<<<(n + 255) / 256, 256, 0, stream>>>(pos, n, grid);
   CUDA_CHECK(cudaGetLastError());
+  CUDA_CHECK(cudaStreamSynchronize(stream));
   std::size_t required_bytes = 0;
   CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
-      grid.scanStorage, required_bytes, grid.cellCount, grid.cellStart,
+      // Pass a null buffer to ask CUB for the scratch size.
+      nullptr, required_bytes, grid.cellCount, grid.cellStart,
       grid.numCells, stream));
   if (required_bytes > grid.scanStorageBytes) {
     cudaFree(grid.scanStorage);
