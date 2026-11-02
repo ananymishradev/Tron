@@ -20,6 +20,11 @@ set(ENGINE_SOURCES
   src/sim/stats.cu
   src/sim/grid.cu
   src/sim/collisions.cu
+  src/render/camera.cpp
+  src/render/shader.cpp
+  src/render/renderer.cpp
+  src/app/app.cpp
+  src/app/input.cpp
 )
 
 add_library(engine STATIC ${ENGINE_SOURCES})
@@ -42,6 +47,7 @@ add_engine_test(test_particles tests/test_particles.cu)
 add_engine_test(test_forces tests/test_forces.cu)
 add_engine_test(test_grid tests/test_grid.cu)
 add_engine_test(test_collisions tests/test_collisions.cu)
+add_engine_test(test_render tests/test_render.cpp)
 add_executable(bench_linear bench/bench_linear.cu)
 target_link_libraries(bench_linear PRIVATE engine)
 add_executable(bench_grid bench/bench_grid.cu)
