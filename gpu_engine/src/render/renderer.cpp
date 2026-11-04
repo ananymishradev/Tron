@@ -68,7 +68,9 @@ bool Renderer::init(SDL_Window* window) {
   glGenBuffers(1, &particle_vbo_);
   glBindVertexArray(particle_vao_);
   glBindBuffer(GL_ARRAY_BUFFER, particle_vbo_);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4, nullptr, GL_DYNAMIC_DRAW);
+  particle_capacity_ = 1024;
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float4) * particle_capacity_, nullptr,
+               GL_DYNAMIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 4, nullptr);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float) * 4,

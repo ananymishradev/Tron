@@ -23,6 +23,7 @@ set(ENGINE_SOURCES
   src/render/camera.cpp
   src/render/shader.cpp
   src/render/renderer.cpp
+  src/render/interop.cu
   src/app/app.cpp
   src/app/input.cpp
 )
@@ -48,6 +49,7 @@ add_engine_test(test_forces tests/test_forces.cu)
 add_engine_test(test_grid tests/test_grid.cu)
 add_engine_test(test_collisions tests/test_collisions.cu)
 add_engine_test(test_render tests/test_render.cpp)
+add_engine_test(test_interop tests/test_interop.cu)
 add_executable(bench_linear bench/bench_linear.cu)
 target_link_libraries(bench_linear PRIVATE engine)
 add_executable(bench_grid bench/bench_grid.cu)
