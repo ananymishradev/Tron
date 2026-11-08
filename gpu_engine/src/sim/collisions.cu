@@ -27,10 +27,12 @@ __device__ int cell_for_position(float4 position, const UniformGrid& grid) {
   return static_cast<int>(min(cell, static_cast<long long>(grid.numCells - 1)));
 }
 
-__global__ void collision_kernel(const float4* pos_prev, const float4* vel_prev,
-                                 float4* pos_mass, float4* velocity, int count,
-                                 UniformGrid grid, SimParams params,
-                                 DeviceContactStats* stats) {
+// Four blocks per SM is the occupancy target from the 3050 profile; revisit it when the kernel changes.
+__global__ __launch_bounds__(256, 4)
+void collision_kernel(const float4* pos_prev, const float4* vel_prev,
+                      float4* pos_mass, float4* velocity, int count,
+                      UniformGrid grid, SimParams params,
+                      DeviceContactStats* stats) {
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= count) {
     return;

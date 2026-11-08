@@ -12,6 +12,7 @@ struct UniformGrid {
   int3 dims{1, 1, 1};
   int numCells = 0;
   bool clamped = false;
+  bool clamp_warning_emitted = false;
   int* cellCount = nullptr;
   int* cellStart = nullptr;
   int* cellCursor = nullptr;

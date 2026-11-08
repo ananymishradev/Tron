@@ -152,8 +152,11 @@ void launch_grid_setup(UniformGrid& grid, const float4* pos, int n,
   grid.clamped = was_clamped;
   // Warn once per grid; a clamped grid is a configuration problem, not a transient.
   if (was_clamped) {
-    std::fprintf(stderr, "warning: uniform grid clamped from %d to %d cells\n",
-                 requested_cells, cells);
+    if (!grid.clamp_warning_emitted) {
+      std::fprintf(stderr, "warning: uniform grid clamped from %d to %d cells\n",
+                   requested_cells, cells);
+      grid.clamp_warning_emitted = true;
+    }
   }
 }
 
