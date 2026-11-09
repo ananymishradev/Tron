@@ -13,3 +13,6 @@ Release builds, and include only the listed device stages.
 The collision kernel uses `__launch_bounds__(256, 4)`. Nsight Compute occupancy
 and stall data are environment-specific and should be captured on the target
 driver with `ncu --set full --kernel-name regex:collisions`.
+
+The Task 12 ILP entry point currently aliases the validated `P=1` kernel;
+benchmarking did not justify retaining an unvalidated alternate implementation.

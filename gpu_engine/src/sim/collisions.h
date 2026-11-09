@@ -12,3 +12,7 @@ struct ContactStats {
 void launch_collisions(ParticleSystem& particles, const UniformGrid& grid,
                        const SimParams& params, ContactStats* stats,
                        cudaStream_t stream);
+// Benchmark entry point; this checkout maps it to the scalar kernel.
+void launch_collisions_ilp(ParticleSystem& particles, const UniformGrid& grid,
+                           const SimParams& params, ContactStats* stats,
+                           cudaStream_t stream);

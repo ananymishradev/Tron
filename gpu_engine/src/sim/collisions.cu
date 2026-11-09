@@ -175,3 +175,9 @@ void launch_collisions(ParticleSystem& particles, const UniformGrid& grid,
   }
   CUDA_CHECK(cudaFreeAsync(device_stats, stream));
 }
+
+void launch_collisions_ilp(ParticleSystem& particles, const UniformGrid& grid,
+                           const SimParams& params, ContactStats* stats,
+                           cudaStream_t stream) {
+  launch_collisions(particles, grid, params, stats, stream);
+}
