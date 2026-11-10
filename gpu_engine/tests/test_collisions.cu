@@ -56,6 +56,20 @@ int main() {
   CHECK(output[1].x > 0.0f);
   CHECK(ilp_stats.contacts == stats.contacts);
 
+  CUDA_CHECK(cudaMemcpy(particles.posMass, positions, sizeof(positions),
+                        cudaMemcpyHostToDevice));
+  CUDA_CHECK(cudaMemcpy(particles.vel, velocities, sizeof(velocities),
+                        cudaMemcpyHostToDevice));
+  CUDA_CHECK(cudaMemcpy(particles.posPrev, particles.posMass,
+                        sizeof(positions), cudaMemcpyDeviceToDevice));
+  CUDA_CHECK(cudaMemcpy(particles.velPrev, particles.vel, sizeof(velocities),
+                        cudaMemcpyDeviceToDevice));
+  launch_grid_build(particles.posPrev, count, grid, nullptr);
+  ContactStats smem_stats{};
+  launch_collisions_smem(particles, grid, params, &smem_stats, nullptr);
+  CUDA_CHECK(cudaDeviceSynchronize());
+  CHECK(smem_stats.contacts == stats.contacts);
+
   ParticleSystem static_particle;
   static_particle.alloc(1);
   const float4 static_position{0.0f, 1.0f, 0.0f, 0.0f};

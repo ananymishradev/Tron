@@ -16,3 +16,7 @@ void launch_collisions(ParticleSystem& particles, const UniformGrid& grid,
 void launch_collisions_ilp(ParticleSystem& particles, const UniformGrid& grid,
                            const SimParams& params, ContactStats* stats,
                            cudaStream_t stream);
+// Same as ILP: the SMEM variant is a placeholder in this build.
+void launch_collisions_smem(ParticleSystem& particles, const UniformGrid& grid,
+                            const SimParams& params, ContactStats* stats,
+                            cudaStream_t stream);
