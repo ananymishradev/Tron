@@ -28,6 +28,8 @@ set(ENGINE_SOURCES
   src/sim/rigid.cu
   src/app/app.cpp
   src/app/input.cpp
+  src/app/probe.cpp
+  src/app/stats_log.cpp
 )
 
 add_library(engine STATIC ${ENGINE_SOURCES})
@@ -54,6 +56,7 @@ add_engine_test(test_render tests/test_render.cpp)
 add_engine_test(test_interop tests/test_interop.cu)
 add_engine_test(test_rigid tests/test_rigid.cu)
 add_engine_test(test_rigid_render tests/test_rigid_render.cpp)
+add_engine_test(test_observability tests/test_observability.cpp)
 add_executable(bench_linear bench/bench_linear.cu)
 target_link_libraries(bench_linear PRIVATE engine)
 add_executable(bench_grid bench/bench_grid.cu)
