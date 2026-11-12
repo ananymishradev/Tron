@@ -20,3 +20,6 @@ benchmarking did not justify retaining an unvalidated alternate implementation.
 The Task 13 SMEM entry point likewise aliases the validated global-read kernel.
 `bench/autotune.sh` emits the full 36-configuration CSV matrix; measured kernel
 selection remains disabled until a target-machine benchmark supplies timings.
+
+The profiling and optimization interfaces are implemented, but the full
+interactive frame/CLI acceptance path is not yet wired into `main.cpp`.
