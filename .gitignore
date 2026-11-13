@@ -1,7 +1,7 @@
 # Build directories
 build/
 out/
-
+task.md
 # IDE files
 .vscode/
 .idea/
