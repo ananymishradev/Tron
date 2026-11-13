@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../assests/ascii-art-text.png" alt="Tron" width="440">
+  <img src="/assests/ascii-art-text.png" alt="Tron" width="440">
 </p>
 
 <h1 align="center">Tron</h1>
