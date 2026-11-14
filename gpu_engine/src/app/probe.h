@@ -16,4 +16,4 @@ struct ProbeResult {
 
 bool probe_nearest(const std::vector<float4>& pos_mass,
                    const std::vector<float4>& vel, Ray ray, float max_distance,
-                   ProbeResult* out);
+                   ProbeResult* out, float neighbor_radius = 0.2f);

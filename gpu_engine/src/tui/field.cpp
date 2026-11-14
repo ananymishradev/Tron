@@ -1,6 +1,17 @@
 #include "tui/field.h"
 #include <algorithm>
 #include <cmath>
+// Screen cell to world ray; the density grid already carries the visible bounds.
+bool field_pick(const DensityGrid& d, int x, int y, Ray* out) {
+  // Guard before doing any math; the caller may pass a stale cell after a resize.
+  if (!out || x < 0 || y < 0 || x >= d.width || y >= d.height ||
+      d.width <= 0 || d.height <= 0) return false;
+  const float a = d.min_a + (x + .5f) / d.width * (d.max_a - d.min_a);
+  const float b = d.min_b + (y + .5f) / d.height * (d.max_b - d.min_b);
+  if (d.plane == ViewPlane::TopXZ) *out = {{a, 1e6f, b}, {0, -1, 0}};
+  else *out = {{a, b, 1e6f}, {0, 0, -1}};
+  return true;
+}
 ftxui::Element render_field(const DensityGrid& d,const ProbeResult&,bool probe,const Theme& t,int w,int h){
   // Use the observed maximum so a quiet scene still shows contrast.
   uint32_t max=d.max_count; for(auto v:d.particles) max=std::max(max,v);

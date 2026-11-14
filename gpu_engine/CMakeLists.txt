@@ -104,6 +104,7 @@ add_test(NAME test_cli COMMAND test_cli)
 add_executable(test_tui_view tests/test_tui_view.cpp)
 target_link_libraries(test_tui_view PRIVATE engine_tui)
 add_test(NAME test_tui_view COMMAND test_tui_view)
+add_engine_test(test_probe tests/test_probe.cpp)
 add_test(NAME test_tui_smoke
   COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tui_smoke.sh
           $<TARGET_FILE:gpu_engine>)

@@ -5,7 +5,7 @@
 
 bool probe_nearest(const std::vector<float4>& pos_mass,
                    const std::vector<float4>& vel, Ray ray, float max_distance,
-                   ProbeResult* out) {
+                   ProbeResult* out, float neighbor_radius) {
   if (out == nullptr) {
     return false;
   }
@@ -28,6 +28,16 @@ bool probe_nearest(const std::vector<float4>& pos_mass,
       out->index = static_cast<int>(i);
       out->pos = point;
       out->vel = {vel[i].x, vel[i].y, vel[i].z};
+    }
+  }
+  // Neighbor count is a simple radius query, only run when a probe succeeds.
+  if (out->index >= 0) {
+    for (std::size_t i = 0; i < count; ++i) {
+      if (static_cast<int>(i) != out->index &&
+          length_squared(Vec3{pos_mass[i].x, pos_mass[i].y, pos_mass[i].z} -
+                         out->pos) <= neighbor_radius * neighbor_radius) {
+        ++out->neighbors;
+      }
     }
   }
   return out->index >= 0;
