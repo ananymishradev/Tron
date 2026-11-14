@@ -1,167 +1,178 @@
 <p align="center">
-  <img src="/assests/ascii-art-text.png" alt="Tron" width="440">
+  <img src="assests/ascii-art-text.png" alt="Tron" width="440">
 </p>
 
 <h1 align="center">Tron</h1>
 
-A CUDA particle and rigid-body engine with a hand-written OpenGL front end.
+<p align="center">
+  <strong>A GPU physics playground for seeing a million particles move.</strong>
+</p>
 
-Tron is a small physics engine built to run on a laptop GPU and show its work. It simulates particles and rigid bodies on the GPU, draws them with raw OpenGL, and reports what each stage costs. There is no scene editor or UI toolkit, and nothing allocates behind your back in the frame loop.
+Tron is a small CUDA-powered particle and rigid-body engine built around one
+simple idea: physics is more exciting when you can watch the machine do the
+work.
 
-I started it to answer a practical question: how much simulation can an RTX 3050 handle before the frame budget disappears, and which kernel gives out first?
+It combines GPU simulation, a hand-written SDL2/OpenGL renderer, collision
+experiments, profiling tools, and live observability in one focused project.
+The goal is not to hide the hard parts behind a large framework. The goal is
+to make the algorithms visible, measurable, and fun to explore.
 
-## Status
+## Why Tron?
 
-The current implementation includes:
+Most physics demos show the final picture. Tron also shows the engineering
+behind that picture:
 
-- float math layer, SoA particle storage, deterministic init
-- gravity, drag, semi-implicit Euler
-- kinetic energy, potential, and momentum reductions
-- counting-sort uniform grid
-- 1M particles at about 1.19 ms per step for forces and integration
+- How far can an RTX 3050 push a particle simulation?
+- What does a uniform-grid broadphase buy us?
+- Which collision strategy is actually faster?
+- What happens when CUDA/OpenGL interop is unavailable?
+- Can a simulation remain inspectable while it is running?
 
-- snapshot-based particle collisions with plane contacts
-- SDL2/OpenGL point and instanced rigid-body rendering
-- CUDA-GL interop with host upload fallback
-- rigid-body initialization, integration, and plane contacts
-- probe selection, CSV logging, and stage benchmarks
+The project is designed as a learning system and a performance experiment,
+not just a finished demo.
 
-The full task list is in [task.md](../task.md).
+## What is inside
 
-## What it will do
+### Particle simulation
 
-Target scene: 1,000,000 particles and 10,000 rigid bodies, interactive on an RTX 3050 Laptop with 6 GB.
+Particles use structure-of-arrays GPU buffers with deterministic,
+seed-controlled initialization. The simulation includes gravity, drag,
+semi-implicit Euler integration, particle collisions, plane contacts, and
+kinetic/potential/momentum statistics.
 
-- Particles collide through a uniform grid and resolve with impulses.
-- Rigid bodies use quaternions, sphere and box shapes, and a Jacobi contact solver.
-- The view is drawn by hand: points, a floor grid, instanced bodies, and a text HUD.
-- Pause, step, reset, orbit, zoom, and click a particle to inspect it.
-- CSV logs of frame time, pair counts, contacts, kinetic energy, and potential.
+### Uniform-grid broadphase
 
-## Design
+The broadphase uses counting sort and CUB exclusive scan to organize particles
+into spatial cells. If a scene requests an unreasonable number of cells, Tron
+clamps the grid and reports a warning instead of silently exhausting device
+memory.
 
-### Simulation
+### Rigid bodies
 
-Particles live in structure-of-arrays buffers. Each particle is a few `float4` values: position plus inverse mass, velocity plus radius, force, and a material id. The layout keeps warp accesses contiguous and avoids the pointer chasing of the original CPU code.
+Rigid bodies use quaternion orientation, sphere and box shapes, plane contacts,
+and a Jacobi-style contact solve. Their state lives in GPU-friendly
+structure-of-arrays buffers as well.
 
-Integration is semi-implicit Euler at a fixed 1/60 s step. The frame loop accumulates real time and runs at most two substeps, so a slow frame slows the simulation instead of exploding it.
+### Rendering and inspection
 
-### Broadphase
+The renderer uses SDL2 and raw OpenGL 3.3. It supports point-cloud particles,
+instanced rigid-body rendering, an orbit camera, and CUDA/OpenGL interop with a
+host-upload fallback for drivers or contexts that do not support registration.
 
-A uniform grid is rebuilt each step with a counting sort. Count particles per cell, exclusive-scan the counts, then scatter particle indices into cell order. The grid is clamped to a fixed cell budget, so a bad scene scale produces a warning instead of an out-of-memory crash.
+The engine also includes ray-based particle probing and CSV statistics logging,
+so a run can be inspected visually and numerically.
 
-### Collisions
+## Current status
 
-Particle contacts use a snapshot of positions and velocities. Each thread reads the snapshot, accumulates its own impulse, and writes only its own particle. Every pair is evaluated twice, which costs some work but removes atomics from the hot path and keeps results independent of thread order.
+The core engine, render components, CUDA/OpenGL fallback, rigid-body APIs,
+benchmarks, and correctness tests are implemented.
 
-Rigid body contacts are generated for sphere-sphere, sphere-plane, and box-plane pairs, then solved with ten Jacobi iterations. The solver clamps normal impulses at zero and uses a small Baumgarte correction. Warm starting is not in the first version.
+The remaining product-level work is wiring every subsystem into one polished
+interactive CLI experience. In other words: the engine pieces are here, and
+the next step is turning them into the final show.
 
-### Rendering
+## Performance snapshot
 
-SDL2 opens a window and an OpenGL 3.3 core context. Particles are drawn as points colored by speed. Rigid bodies are instanced spheres and boxes. The HUD is built from `stb_easy_font` quads, so there is no font library.
+On an NVIDIA GeForce RTX 3050 6GB Laptop GPU:
 
-When interop is available, a CUDA kernel writes directly into the mapped vertex buffer. If registration fails, the renderer falls back to a pinned host buffer and keeps going.
+| Workload | Result |
+|---|---:|
+| Forces + integration, 1M particles | ~1.19 ms/step |
+| Uniform-grid setup + sort, 1M particles | ~21.82 ms |
+| Collision baseline, 100K particles | ~4276 ms/step |
 
-## Performance work
-
-The optimization loop follows the SGEMM worklog by Simon Boehm: start with the simplest correct kernel, measure it, then change one thing at a time.
-
-The order is:
-
-1. coalesced structure-of-arrays access
-2. occupancy and register pressure, checked with Nsight Compute
-3. more work per thread, reusing cell ranges
-4. vectorized `float4` loads
-5. shared-memory tiles for dense scenes
-6. `cp.async` double buffering
-7. autotuning block size, particles per thread, and cell size
-
-A variant stays only if the benchmark says it is faster. Slower experiments get recorded in [docs/perf.md](docs/perf.md) and removed. Current numbers live there too.
+The collision baseline is intentionally kept as a reference point for future
+optimization. Performance notes and negative results live in
+[`gpu_engine/docs/perf.md`](gpu_engine/docs/perf.md).
 
 ## Build
 
-Requires Linux, CUDA 13.4 or newer, SDL2, OpenGL, and CMake 3.24.
+### Requirements
 
-On Arch:
+- Linux
+- CUDA 13.4+
+- CMake 3.24+
+- SDL2
+- OpenGL
+- An NVIDIA GPU with compute capability 8.6 for the target configuration
 
-```
+On Arch Linux:
+
+```bash
 sudo pacman -S cuda sdl2 cmake
 ```
 
-From this directory:
+### Configure and build
 
-```
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+From the repository root:
+
+```bash
+cmake -S gpu_engine -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-Check the GPU and toolchain:
+### Check the device
 
-```
+```bash
 ./build/gpu_engine --info
 ```
 
-Run the tests:
+### Run the tests
 
-```
+```bash
 ctest --test-dir build --output-on-failure
 ```
 
-The build target is `gpu_engine`; the project name is Tron.
+The test suite covers CUDA smoke checks, math, deterministic particle
+initialization, forces, grid construction, collisions, rendering,
+CUDA/OpenGL fallback, rigid bodies, and observability.
 
-## Run
+## Project layout
 
-The executable currently supports the device probe:
-
-```
-./build/gpu_engine --info
-```
-
-The simulation and renderer APIs are available through the `engine` library;
-the complete interactive CLI wiring remains a follow-up limitation.
-
-## Controls
-
-| Key | Action |
-|---|---|
-| Space | pause or resume |
-| `.` | single step while paused |
-| R | reset the scene |
-| mouse drag | orbit the camera |
-| wheel | zoom |
-| P | toggle the probe panel |
-| L | toggle CSV logging |
-| H | toggle the HUD |
-| Esc | quit |
-
-## Layout
-
-```
+```text
 gpu_engine/
-  src/sim/      particle and rigid body state, kernels
-  src/render/   OpenGL renderer, camera, HUD, interop
-  src/app/      window, frame loop, probe, logging
-  src/util/     math, CUDA checks, device probe
-  tests/        correctness tests and CPU references
-  bench/        stage benchmarks and autotuning
-  docs/perf.md  measurements and negative results
+  src/sim/       particle, grid, collision, and rigid-body systems
+  src/render/    camera, OpenGL renderer, rigid renderer, interop
+  src/app/       probing, logging, and application scaffolding
+  src/util/      CUDA checks, math, and device information
+  tests/         GPU and CPU-reference correctness tests
+  bench/         stage benchmarks and tuning matrix
+  docs/perf.md   measurements and optimization notes
 ```
 
-## Limits
+## Controls planned for the interactive viewer
 
-Tron is deliberately small.
+| Input | Action |
+|---|---|
+| `Space` | Pause or resume |
+| `.` | Step once while paused |
+| `R` | Reset the scene |
+| Mouse drag | Orbit the camera |
+| Mouse wheel | Zoom |
+| `P` | Toggle particle probing |
+| `L` | Toggle CSV logging |
+| `H` | Toggle the HUD |
+| `Esc` | Quit |
 
-- Uniform gravity only. No Barnes-Hut or fast multipole.
-- No fluids, soft bodies, or cloth.
-- Particles and rigid bodies do not push on each other in the first version.
-- box-box contacts are not implemented yet
-- the final interactive CLI acceptance path is not yet wired into `main.cpp`
-- Linux only.
+## Honest limits
 
-## Credits
+Tron is deliberately focused:
 
-The physics follows the CMU SIGGRAPH course notes by Andrew Witkin and David Baraff. The performance method comes from Simon Boehm's CUDA SGEMM worklog. SDL2, glad, and stb_easy_font do the unglamorous parts.
+- uniform gravity only; no long-range N-body gravity
+- no fluids, cloth, soft bodies, or box-box contacts yet
+- particles and rigid bodies are not two-way coupled in v1
+- Linux is the supported platform
+- the final interactive CLI wiring is still in progress
+
+## The story behind the project
+
+Tron is an attempt to make computational physics feel tangible: not just a
+formula in a notebook, and not just a finished animation, but a living system
+whose data structures, kernels, tradeoffs, and failures can all be explored.
+
+If you are interested in CUDA, simulation, graphics, or performance
+engineering, this repository is meant to be readable as well as runnable.
 
 ## License
 
-MIT. See [LICENSE](../LICENSE).
+MIT. See [`LICENSE`](LICENSE).
