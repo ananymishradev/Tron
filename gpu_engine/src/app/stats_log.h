@@ -13,8 +13,11 @@ class StatsLog {
              int particles, int bodies, unsigned pairs, unsigned contacts,
              const SimStats&);
   void close();
+  int rows() const { return rows_; }
+  bool file_open() const { return file_ != nullptr; }
 
  private:
   std::FILE* file_ = nullptr;
   int rows_since_flush_ = 0;
+  int rows_ = 0;
 };

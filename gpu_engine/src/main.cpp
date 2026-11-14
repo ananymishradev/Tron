@@ -1,20 +1,40 @@
-#include <cstring>
-#include <exception>
+#include "app/headless.h"
+#include "cli/options.h"
+#include "util/cuda_check.h"
+
+#include <cuda_runtime.h>
+
 #include <iostream>
+#include <unistd.h>
 
 void print_device_info();
 
 int main(int argc, char** argv) {
-  if (argc > 1 && std::strcmp(argv[1], "--info") == 0) {
-    try {
+  try {
+    const Options options = parse_cli(argc, argv);
+    if (options.mode == Mode::Info) {
       print_device_info();
       return 0;
-    } catch (const std::exception& error) {
-      std::cerr << "device probe failed: " << error.what() << '\n';
-      return 1;
     }
+    if (options.mode == Mode::Help) {
+      std::cout << help_text();
+      return 0;
+    }
+    if (options.mode == Mode::Version) {
+      std::cout << "0.2.0\n";
+      return 0;
+    }
+    Mode mode = resolve_mode(options, isatty(STDIN_FILENO), isatty(STDOUT_FILENO));
+    if (mode == Mode::Sim || mode == Mode::Bench) {
+      return run_headless(options, std::cout, std::cerr);
+    }
+    std::cout << help_text();
+    return 0;
+  } catch (const CliError& error) {
+    std::cerr << "error: " << error.what() << "\n\n" << help_text();
+    return error.exit_code;
+  } catch (const std::exception& error) {
+    std::cerr << "error: " << error.what() << '\n';
+    return 1;
   }
-
-  std::cout << "gpu_engine: use --info to print CUDA device information\n";
-  return 0;
 }

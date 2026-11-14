@@ -11,6 +11,7 @@ bool StatsLog::open(const char* path) {
   std::fprintf(file_,
                "frame,sim_ms,render_ms,fps,particles,bodies,pairs,contacts,"
                "kinetic,potential\n");
+  rows_ = 0;
   return true;
 }
 
@@ -23,6 +24,7 @@ void StatsLog::write(int frame, double sim_ms, double render_ms, double fps,
   std::fprintf(file_, "%d,%.9g,%.9g,%.9g,%d,%d,%u,%u,%.9g,%.9g\n", frame,
                sim_ms, render_ms, fps, particles, bodies, pairs, contacts,
                stats.kinetic, stats.potential);
+  ++rows_;
   // Flush about once per second at 60 Hz so a crash does not lose the whole run.
   if (++rows_since_flush_ >= 60) {
     std::fflush(file_);
@@ -36,4 +38,5 @@ void StatsLog::close() {
     std::fclose(file_);
     file_ = nullptr;
   }
+  rows_ = 0;
 }

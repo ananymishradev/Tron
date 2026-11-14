@@ -25,6 +25,9 @@ add_library(engine_core STATIC
   src/sim/density.cu
   src/app/probe.cpp
   src/app/stats_log.cpp
+  src/app/telemetry.cpp
+  src/app/headless.cpp
+  src/app/dump.cpp
 )
 target_include_directories(engine_core PUBLIC src third_party)
 target_link_libraries(engine_core PUBLIC CUDA::cudart)
@@ -46,6 +49,11 @@ endif()
 add_executable(gpu_engine src/main.cpp)
 target_link_libraries(gpu_engine PRIVATE engine_core)
 
+add_library(cli STATIC src/cli/options.cpp)
+target_include_directories(cli PUBLIC src)
+target_link_libraries(cli PUBLIC engine_core)
+target_link_libraries(gpu_engine PRIVATE cli)
+
 enable_testing()
 function(add_engine_test name source)
   add_executable(${name} ${source})
@@ -63,6 +71,12 @@ add_engine_test(test_rigid tests/test_rigid.cu)
 add_engine_test(test_observability tests/test_observability.cpp)
 add_engine_test(test_simulation tests/test_simulation.cu)
 add_engine_test(test_density tests/test_density.cu)
+add_engine_test(test_telemetry tests/test_telemetry.cpp)
+add_engine_test(test_headless tests/test_headless.cpp)
+add_engine_test(test_dump tests/test_dump.cpp)
+add_executable(test_cli tests/test_cli.cpp)
+target_link_libraries(test_cli PRIVATE cli)
+add_test(NAME test_cli COMMAND test_cli)
 
 if(TRON_BUILD_GL)
   add_executable(test_render tests/test_render.cpp)
