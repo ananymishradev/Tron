@@ -1,5 +1,6 @@
 #include "app/headless.h"
 #include "cli/options.h"
+#include "tui/app.h"
 #include "util/cuda_check.h"
 
 #include <cuda_runtime.h>
@@ -28,6 +29,7 @@ int main(int argc, char** argv) {
     if (mode == Mode::Sim || mode == Mode::Bench) {
       return run_headless(options, std::cout, std::cerr);
     }
+    if (mode == Mode::Tui) return TuiApp{}.run(options);
     std::cout << help_text();
     return 0;
   } catch (const CliError& error) {

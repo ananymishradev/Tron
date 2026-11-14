@@ -36,7 +36,8 @@ int main() {
   try { parse({"--frames", "10", "--duration", "1"}); }
   catch (const CliError&) { threw = true; }
   CHECK(threw);
-  CHECK(resolve_mode(defaults, true, true) == Mode::Help);
+  CHECK(resolve_mode(defaults, true, true) == Mode::Tui);
+  CHECK(parse({"tui"}).mode == Mode::Tui);
   CHECK(resolve_mode(sim, false, false) == Mode::Sim);
   CHECK(help_text().find("--particles") != std::string::npos);
   return 0;

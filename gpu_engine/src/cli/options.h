@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-enum class Mode { Auto, Sim, Bench, Info, Help, Version };
+enum class Mode { Auto, Sim, Bench, Info, Help, Version, Tui };
 
 struct Options {
   Mode mode = Mode::Auto;

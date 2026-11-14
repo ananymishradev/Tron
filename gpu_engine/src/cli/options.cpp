@@ -39,7 +39,7 @@ Options parse_cli(int argc, char** argv) {
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "sim" || arg == "bench" || arg == "info" || arg == "help" ||
-        arg == "version") {
+        arg == "version" || arg == "tui") {
       if (!command.empty()) throw CliError(2, "multiple commands specified");
       command = arg;
       continue;
@@ -60,6 +60,10 @@ Options parse_cli(int argc, char** argv) {
     if (arg == "--headless") {
       options.headless = true;
       options.mode = Mode::Sim;
+      continue;
+    }
+    if (arg == "--tui") {
+      options.mode = Mode::Tui;
       continue;
     }
     if (arg == "--bench") {
@@ -159,6 +163,7 @@ Options parse_cli(int argc, char** argv) {
   if (command == "info") options.mode = Mode::Info;
   if (command == "help") options.mode = Mode::Help;
   if (command == "version") options.mode = Mode::Version;
+  if (command == "tui") options.mode = Mode::Tui;
   // Dense is a fixed preset; it overrides the particle and body counts.
   if (options.scene == "dense") {
     options.particles = 200'000;
@@ -178,13 +183,14 @@ Options parse_cli(int argc, char** argv) {
 
 Mode resolve_mode(const Options& options, bool stdin_tty, bool stdout_tty) {
   if (options.mode != Mode::Auto) return options.mode;
+  if (stdin_tty && stdout_tty) return Mode::Tui;
   if (options.run_flags && (!stdin_tty || !stdout_tty)) return Mode::Sim;
   return Mode::Help;
 }
 
 std::string help_text() {
   return "Tron GPU physics engine\n\n"
-         "Usage: gpu_engine [sim|bench|info|help] [options]\n\n"
+         "Usage: gpu_engine [sim|bench|info|help|tui] [options]\n\n"
          "Options:\n"
          "  --particles N       particle count\n"
          "  --bodies N          rigid-body count\n"

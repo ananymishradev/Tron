@@ -9,8 +9,23 @@ set(CMAKE_CUDA_ARCHITECTURES 86)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 option(TRON_BUILD_GL "Build the SDL2/OpenGL renderer and GL tests" ON)
+option(TRON_FETCH_DEPS "Fetch FTXUI at configure time" ON)
 
 find_package(CUDAToolkit REQUIRED)
+include(FetchContent)
+if(TRON_FETCH_DEPS)
+  set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(FTXUI_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+  set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(FTXUI_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+  set(FTXUI_QUIET ON CACHE BOOL "" FORCE)
+  FetchContent_Declare(ftxui
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI.git
+    GIT_TAG v7.0.3)
+  FetchContent_MakeAvailable(ftxui)
+else()
+  find_package(ftxui CONFIG REQUIRED)
+endif()
 
 add_library(engine_core STATIC
   src/util/device_info.cu
@@ -54,6 +69,13 @@ add_library(cli STATIC src/cli/options.cpp)
 target_include_directories(cli PUBLIC src)
 target_link_libraries(cli PUBLIC engine_core)
 target_link_libraries(gpu_engine PRIVATE cli)
+add_library(engine_tui STATIC
+  src/tui/theme.cpp src/tui/format.cpp src/tui/field.cpp
+  src/tui/view.cpp src/tui/app.cpp src/tui/terminal_guard.cpp)
+target_include_directories(engine_tui PUBLIC src)
+target_link_libraries(engine_tui PUBLIC engine_core
+  ftxui::screen ftxui::dom ftxui::component)
+target_link_libraries(gpu_engine PRIVATE engine_tui)
 
 enable_testing()
 function(add_engine_test name source)
@@ -79,6 +101,13 @@ add_engine_test(test_runner tests/test_runner.cpp)
 add_executable(test_cli tests/test_cli.cpp)
 target_link_libraries(test_cli PRIVATE cli)
 add_test(NAME test_cli COMMAND test_cli)
+add_executable(test_tui_view tests/test_tui_view.cpp)
+target_link_libraries(test_tui_view PRIVATE engine_tui)
+add_test(NAME test_tui_view COMMAND test_tui_view)
+add_test(NAME test_tui_smoke
+  COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tui_smoke.sh
+          $<TARGET_FILE:gpu_engine>)
+set_tests_properties(test_tui_smoke PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
 
 if(TRON_BUILD_GL)
   add_executable(test_render tests/test_render.cpp)
