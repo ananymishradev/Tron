@@ -127,6 +127,13 @@ The test suite covers CUDA smoke checks, math, deterministic particle
 initialization, forces, grid construction, collisions, rendering,
 CUDA/OpenGL fallback, rigid bodies, and observability.
 
+## Documentation
+
+- [Quick user guide](docs/user-guide.md) — build, CLI, TUI keys, and output files
+- [Developer guide](docs/developer-guide.md) — architecture, simulation pipeline,
+  tests, and benchmarks
+- [Performance notes](gpu_engine/docs/perf.md) — measured timings and optimization log
+
 ## Project layout
 
 ```text
