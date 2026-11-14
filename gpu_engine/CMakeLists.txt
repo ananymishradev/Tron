@@ -28,6 +28,7 @@ add_library(engine_core STATIC
   src/app/telemetry.cpp
   src/app/headless.cpp
   src/app/dump.cpp
+  src/app/runner.cpp
 )
 target_include_directories(engine_core PUBLIC src third_party)
 target_link_libraries(engine_core PUBLIC CUDA::cudart)
@@ -74,6 +75,7 @@ add_engine_test(test_density tests/test_density.cu)
 add_engine_test(test_telemetry tests/test_telemetry.cpp)
 add_engine_test(test_headless tests/test_headless.cpp)
 add_engine_test(test_dump tests/test_dump.cpp)
+add_engine_test(test_runner tests/test_runner.cpp)
 add_executable(test_cli tests/test_cli.cpp)
 target_link_libraries(test_cli PRIVATE cli)
 add_test(NAME test_cli COMMAND test_cli)
