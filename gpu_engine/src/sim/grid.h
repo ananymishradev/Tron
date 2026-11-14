@@ -22,6 +22,7 @@ struct UniformGrid {
   int allocatedParticles = 0;
   void* scanStorage = nullptr;
   std::size_t scanStorageBytes = 0;
+  float* aabbScratch = nullptr;
 
   void alloc(int maxCells, int n);
   void free();

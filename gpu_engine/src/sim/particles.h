@@ -23,3 +23,6 @@ struct ParticleSystem {
 
 void launch_particles_init(ParticleSystem& particles, int n, uint32_t seed,
                            const InitParams& params, cudaStream_t stream);
+void launch_forces(ParticleSystem&, const SimParams&, cudaStream_t);
+void launch_integrate(ParticleSystem&, const SimParams&, cudaStream_t);
+void launch_stats(const ParticleSystem&, const SimParams&, SimStats*, cudaStream_t);

@@ -6,7 +6,9 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <cfloat>
 #include <climits>
+#include <cmath>
 #include <cstdio>
 #include <vector>
 
@@ -66,6 +68,53 @@ __global__ void place_cells_kernel(const float4* positions, int count,
   }
 }
 
+__global__ void reduce_aabb_kernel(const float4* positions, int count,
+                                   float* output) {
+    __shared__ float minimum[3][256];
+    __shared__ float maximum[3][256];
+    const int lane = threadIdx.x;
+    float min_x = FLT_MAX;
+    float min_y = FLT_MAX;
+    float min_z = FLT_MAX;
+    float max_x = -FLT_MAX;
+    float max_y = -FLT_MAX;
+    float max_z = -FLT_MAX;
+    for (int index = lane; index < count; index += blockDim.x) {
+      const float4 value = positions[index];
+      if (!isfinite(value.x) || !isfinite(value.y) || !isfinite(value.z)) {
+        continue;
+      }
+      min_x = fminf(min_x, value.x);
+      min_y = fminf(min_y, value.y);
+      min_z = fminf(min_z, value.z);
+      max_x = fmaxf(max_x, value.x);
+      max_y = fmaxf(max_y, value.y);
+      max_z = fmaxf(max_z, value.z);
+    }
+    minimum[0][lane] = min_x;
+    minimum[1][lane] = min_y;
+    minimum[2][lane] = min_z;
+    maximum[0][lane] = max_x;
+    maximum[1][lane] = max_y;
+    maximum[2][lane] = max_z;
+    __syncthreads();
+    for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+      if (lane < stride) {
+        for (int axis = 0; axis < 3; ++axis) {
+          minimum[axis][lane] = fminf(minimum[axis][lane], minimum[axis][lane + stride]);
+          maximum[axis][lane] = fmaxf(maximum[axis][lane], maximum[axis][lane + stride]);
+      }
+      __syncthreads();
+    }
+    if (lane == 0) {
+      for (int axis = 0; axis < 3; ++axis) {
+        output[axis] = minimum[axis][0];
+        output[axis + 3] = maximum[axis][0];
+      }
+    }
+  }
+}
+
 }  // namespace
 
 int grid_cell_count(int3 dims) {
@@ -89,6 +138,7 @@ void UniformGrid::alloc(int max_cells, int n) {
   CUDA_CHECK(cudaMalloc(&cellCount, sizeof(int) * allocatedCells));
   CUDA_CHECK(cudaMalloc(&cellStart, sizeof(int) * (allocatedCells + 1)));
   CUDA_CHECK(cudaMalloc(&cellCursor, sizeof(int) * allocatedCells));
+  CUDA_CHECK(cudaMalloc(&aabbScratch, sizeof(float) * 6));
   if (allocatedParticles > 0) {
     CUDA_CHECK(cudaMalloc(&sortedIdx, sizeof(int) * allocatedParticles));
   }
@@ -100,12 +150,14 @@ void UniformGrid::free() {
   cudaFree(cellCursor);
   cudaFree(sortedIdx);
   cudaFree(scanStorage);
+  cudaFree(aabbScratch);
   cellCount = nullptr;
   cellStart = nullptr;
   cellCursor = nullptr;
   sortedIdx = nullptr;
   scanStorage = nullptr;
   scanStorageBytes = 0;
+  aabbScratch = nullptr;
   allocatedCells = 0;
   allocatedParticles = 0;
   numCells = 0;
@@ -117,20 +169,26 @@ void launch_grid_setup(UniformGrid& grid, const float4* pos, int n,
     grid.numCells = 0;
     return;
   }
+  if (grid.aabbScratch == nullptr) {
+    CUDA_CHECK(cudaMalloc(&grid.aabbScratch, sizeof(float) * 6));
+  }
 
-  std::vector<float4> positions(n);
-  CUDA_CHECK(cudaMemcpyAsync(positions.data(), pos, sizeof(float4) * n,
+  const float initial[6] = {FLT_MAX, FLT_MAX, FLT_MAX,
+                            -FLT_MAX, -FLT_MAX, -FLT_MAX};
+  CUDA_CHECK(cudaMemcpyAsync(grid.aabbScratch, initial, sizeof(initial),
+                             cudaMemcpyHostToDevice, stream));
+  reduce_aabb_kernel<<<1, 256, 0, stream>>>(pos, n, grid.aabbScratch);
+  CUDA_CHECK(cudaGetLastError());
+  float bounds[6]{};
+  CUDA_CHECK(cudaMemcpyAsync(bounds, grid.aabbScratch, sizeof(bounds),
                              cudaMemcpyDeviceToHost, stream));
   CUDA_CHECK(cudaStreamSynchronize(stream));
-  Vec3 minimum{positions[0].x, positions[0].y, positions[0].z};
-  Vec3 maximum = minimum;
-  for (const float4& value : positions) {
-    minimum.x = std::min(minimum.x, value.x);
-    minimum.y = std::min(minimum.y, value.y);
-    minimum.z = std::min(minimum.z, value.z);
-    maximum.x = std::max(maximum.x, value.x);
-    maximum.y = std::max(maximum.y, value.y);
-    maximum.z = std::max(maximum.z, value.z);
+  Vec3 minimum{bounds[0], bounds[1], bounds[2]};
+  Vec3 maximum{bounds[3], bounds[4], bounds[5]};
+  if (!std::isfinite(minimum.x) || !std::isfinite(minimum.y) ||
+      !std::isfinite(minimum.z)) {
+    minimum = {0.0f, 0.0f, 0.0f};
+    maximum = {0.0f, 0.0f, 0.0f};
   }
   cell_size = std::max(cell_size, 1e-6f);
   const int3 dimensions{
